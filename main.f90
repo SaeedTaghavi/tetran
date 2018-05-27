@@ -3,6 +3,7 @@ program tetran
     mvaddch,endwin, clear,timeout,usleep,cbreak, &
     maxH=>LINES, maxW=>COLS
   use blocks
+  use keys, only: handle_input
   use, intrinsic:: iso_c_binding, only: c_int,c_ptr
   use, intrinsic:: iso_fortran_env, only: error_unit, input_unit
   implicit none
@@ -10,20 +11,8 @@ program tetran
   logical :: debug=.false.
   integer, parameter :: Tmax = 10000 ! maximum number of pieces to log
 
-  integer :: H,W  ! playfield height, width
-  ! 0 for blank, 1 for block
-  integer, allocatable :: screen(:,:)
   type(c_ptr) :: stdscr
 
-  ! Current x/y of the falling piece
-  integer :: cur_x, cur_y
-
-  ! Type of falling piece
-  ! 0/I: Line, 1/B: Square, 2: T, 3: S, 4: Z, 5: J, 6: L
-  character :: cur_type, next_type
-
-  ! Rotation of falling piece
-  integer :: cur_rotation = 0
 
   ! Current score
   integer :: score = 0, Nblock=0 ! first go around draws two blocks
@@ -46,7 +35,7 @@ program tetran
   integer, parameter :: lines_per_level = 10 ! how many lines to clear to advance to next level
   real, parameter :: difficulty_increase = 1.2 ! factor by which level jumps difficulty
   integer :: Ncleared = 0 ! total number of lines cleared
-  logical :: newhit = .false., moved=.false.
+  logical :: newhit = .false., moved=.false., landed=.false., gameover=.false.
   real :: difficulty_factor=1.
 
   integer, parameter :: bonus(0:4) = [0,40,100,300,1200]
@@ -88,7 +77,9 @@ program tetran
   !--------- main loop
   do
 
-    call handle_input()  ! was a key pressed?
+    call handle_input(moved,landed,gameover,cur_y,next_type)  ! was a key pressed?
+    if (gameover) call game_over()
+    if (landed) call piece_hit()
     if (moved) call redraw()
     
     call system_clock(count=toc)
@@ -98,7 +89,7 @@ program tetran
 
 
     if ( (toc-tic) / real(trate) > move_time) then ! time's up, move piece one step down. real(trate) is necessary for float time comparison!
-      call move_down()
+      if(move_down()) call piece_hit()
       call redraw()
 
 
@@ -251,120 +242,6 @@ contains
     write (msg, "(I4)") Ncleared
     call mvprintw(H+2, W-4, msg)
   end subroutine draw_score
-
-
-  subroutine handle_input()
-    integer :: inp_chr
-
-    inp_chr = getch()
-
-    ! esc is first part of three part arrow key sequence
-    if (inp_chr == 27) then
-        inp_chr = getch()
-
-        if (inp_chr == 91) then
-         inp_chr = getch()
-         if (inp_chr==65) inp_chr = 87
-         if (inp_chr==68) inp_chr = 65
-        endif
-    endif
-
-    moved=.true. ! rather than typing it for each case
-    select case (inp_chr)
-    ! yes this handles upper and lower case, for clever clogs.
-      case (97,65)  ! A - left
-        call move_left()
-      case (115,83,66) ! S - down
-        call move_down()
-      case (100,68,67) ! D - right
-        call move_right()
-      case (119,87) ! W - rotate
-        call rotate_piece()
-      case (113,81) ! Q - quit
-        call game_over()
-      case (116,84) ! CHEAT   T - reset current piece position y to top, preserving x position
-        cur_y = 0
-      case default ! do nothing
-        moved = .false.
-    end select
-    
-    call flushinp()  ! clear repeating keys from stdin buffer
-    
-  end subroutine handle_input
-
-
-  subroutine move_left()
-    integer :: x
-    x = cur_x - 1
-    if (.not. check_collision(x, cur_y, cur_rotation)) cur_x = cur_x - 1
-  end subroutine move_left
-
-
-  subroutine move_right()
-    integer :: x
-    x = cur_x + 1
-    if (.not. check_collision(x, cur_y, cur_rotation)) cur_x = cur_x + 1
-  end subroutine move_right
-
-
-  subroutine move_down()
-    integer :: y
-    y = cur_y + 1
-    if (.not. check_collision(cur_x, y, cur_rotation)) then
-      cur_y = cur_y + 1
-    else
-      call piece_hit()
-    end if
-  end subroutine move_down
-
-
-  subroutine rotate_piece()
-    integer :: r
-    r = cur_rotation + 1
-    if (.not. check_collision(cur_x, cur_y, r)) cur_rotation = cur_rotation + 1
-  end subroutine rotate_piece
-
-
-  logical function check_collision(x, y, rotation) result (collided)
-    integer, intent(in) :: x, y
-    integer, intent(inout) :: rotation
-
-    integer :: block(Ny, Nx)
-    integer :: i, j, jx, iy
-
-    collided = .false.
-    call get_shape(cur_type, rotation, block)
-
-! neither do loop is "concurrent" because of "exit" statements
-    iloop: do i = 1, Ny
-      iy = i + y - 2
-      
-      if (any(block(i,:) == 1) .and. iy >= H) then
-      ! piece hit the floor
-        collided = .true.
-        return
-      end if
-      
-      do j = 1, Nx
-        jx = j + x - 2
-        if (block(i, j) == 1) then
-          ! Handling left/right boundaries
-          if (jx < 0 .or. jx >= W) then
-            collided = .true.
-            return
-          end if
-
-          ! Other blocks
-          if (iy > 0 .and. iy < H) then
-            if (screen(iy + 1, jx + 1) == 1) then
-              collided = .true.
-              return
-            end if
-          end if
-        end if
-      end do
-    end do iloop
-  end function check_collision
 
 
   subroutine draw_piece(offset_x, offset_y, piece_type, piece_rotation)

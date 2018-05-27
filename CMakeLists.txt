@@ -40,6 +40,10 @@ add_library(blocks blocks.f90)
 target_compile_options(blocks PRIVATE ${FFLAGS})
 target_link_libraries(blocks PRIVATE cinter)
 
+add_library(keys keys.f90)
+target_compile_options(keys PRIVATE ${FFLAGS})
+target_link_libraries(keys PRIVATE cinter blocks)
+
 add_library(cinterc cinter.c)
 target_compile_options(cinterc PRIVATE ${CFLAGS})
 target_link_libraries(cinterc PRIVATE ${CURSES_LIBRARIES})
@@ -55,11 +59,11 @@ target_link_libraries(cinter PRIVATE cinterc ${CURSES_LIBRARIES} ${FLIBS})
 #---- executables
 add_executable(tetran main.f90)
 target_compile_options(tetran PRIVATE ${FFLAGS})
-target_link_libraries(tetran PRIVATE cinter blocks)
+target_link_libraries(tetran PRIVATE cinter blocks keys)
 
-add_executable(keys tests/keytest.f90)
-target_compile_options(keys PRIVATE ${FFLAGS})
-target_link_libraries(keys PRIVATE cinter) 
+add_executable(testkeys tests/keytest.f90)
+target_compile_options(testkeys PRIVATE ${FFLAGS})
+target_link_libraries(testkeys PRIVATE cinter) 
 
 add_executable(blockrand tests/randtest.f90)
 target_compile_options(blockrand PRIVATE ${FFLAGS})

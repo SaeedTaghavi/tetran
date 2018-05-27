@@ -2,8 +2,23 @@ module blocks
   use, intrinsic:: iso_fortran_env, only: error_unit
   use cinter, only: err
   implicit none
+  private :: check_collision
+  
+    integer :: H,W  ! playfield height, width
+    ! Playfield: 0 for blank, 1 for block
+    integer, allocatable :: screen(:,:)
 
-    integer, parameter :: Ntypes = 7
+    character(*), parameter :: Btypes = 'ITLJSZB'
+    
+    ! Current x/y of the falling piece
+    integer :: cur_x, cur_y
+ 
+    ! Rotation of falling piece
+    integer :: cur_rotation = 0
+  
+    ! Type of falling piece
+    ! 0/I: Line, 1/B: Square, 2: T, 3: S, 4: Z, 5: J, 6: L
+    character :: cur_type, next_type
   
   public
   ! Stores the shape of the blocks at each of their rotations
@@ -175,33 +190,91 @@ contains
 
     call random_number(r)
 
-    next_type = int2block(floor(r * Ntypes))  ! set this line constant to debug shapes
+    next_type = int2block(floor(r * len(Btypes)))  ! set this line constant to debug shapes
   end subroutine generate_next_type
   
   
   impure elemental character function int2block(i) result(b)
     integer, intent(in) :: i
-
-    select case (i)
-      case (0)
-        b = "I"
-      case(1)
-        b = "T"
-      case(2)
-        b = "L"
-      case(3)
-        b = "J"
-      case(4)
-        b = "S"
-      case(5)
-        b = "Z"
-      case(6)
-        b = "B"
-      case default
-        call err('impossible block type')
-    end select
-
+    b = Btypes(i+1:i+1)
   end function int2block
+  
+  
+    subroutine move_left()
+    integer :: x
+    x = cur_x - 1
+    if (.not. check_collision(x, cur_y, cur_rotation)) cur_x = cur_x - 1
+  end subroutine move_left
+
+
+  subroutine move_right()
+    integer :: x
+    x = cur_x + 1
+    if (.not. check_collision(x, cur_y, cur_rotation)) cur_x = cur_x + 1
+  end subroutine move_right
+
+
+  logical function move_down() result (landed)
+    integer :: y
+    
+    y = cur_y + 1
+    if (.not. check_collision(cur_x, y, cur_rotation)) then
+      cur_y = cur_y + 1
+      landed = .false.
+    else
+      landed = .true.
+    end if
+  end function move_down
+
+
+  subroutine rotate_piece()
+    integer :: r
+    r = cur_rotation + 1
+    if (.not. check_collision(cur_x, cur_y, r)) cur_rotation = cur_rotation + 1
+  end subroutine rotate_piece
+  
+  
+  logical function check_collision(x, y, rotation) result (collided)
+    integer, intent(in) :: x, y
+    integer, intent(inout) :: rotation
+
+    integer :: block(Ny, Nx)
+    integer :: i, j, jx, iy
+
+    collided = .false.
+    call get_shape(cur_type, rotation, block)
+
+! neither do loop is "concurrent" because of "exit" statements
+    iloop: do i = 1, Ny
+      iy = i + y - 2
+      
+      if (any(block(i,:) == 1) .and. iy >= H) then
+      ! piece hit the floor
+        collided = .true.
+        return
+      end if
+      
+      do j = 1, Nx
+        jx = j + x - 2
+        if (block(i, j) == 1) then
+          ! Handling left/right boundaries
+          if (jx < 0 .or. jx >= W) then
+            collided = .true.
+            return
+          end if
+
+          ! Other blocks
+          if (iy > 0 .and. iy < H) then
+            if (screen(iy + 1, jx + 1) == 1) then
+              collided = .true.
+              return
+            end if
+          end if
+        end if
+      end do
+    end do iloop
+  end function check_collision
+
   
   
   subroutine init_random_seed(debug)
