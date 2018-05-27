@@ -126,7 +126,7 @@ Tested with:
 * Intel Fortran 2019
 * PGI 2018
   
-So Intel Fortran takes 3-5 times longer than Gfortran at this simple single-thread benchmark.
+So Intel Fortran takes over 5 times longer than Gfortran at this simple single-thread benchmark.
 
 
 References
