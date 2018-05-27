@@ -1,8 +1,11 @@
 module blocks
   use, intrinsic:: iso_fortran_env, only: error_unit
+  
   use cinter, only: err,endwin,printopts
+  use block_init, only: line,tee,jay,ess,ell,zee,square
+  
   implicit none
-  private :: check_collision
+  private :: check_collision, line, tee, jay, ess, ell, zee, square
   
     logical :: debug=.false.
     integer :: udbg
@@ -40,123 +43,6 @@ module blocks
     logical :: newhit = .false.
   
   public
-  ! Stores the shape of the blocks at each of their rotations
-
-  ! LINE BLOCK
-  integer, parameter :: line(4,4,0:1) = reshape( &
-        [0, 0, 0, 0, &
-         1, 1, 1, 1, &
-         0, 0, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 0, 1, 0, &
-         0, 0, 1, 0, &
-         0, 0, 1, 0, &
-         0, 0, 1, 0], &
-         shape(line))
-
-  ! T BLOCK
-  integer, parameter :: tee(4,4,0:3) = reshape( &
-        [0, 0, 0, 0, &
-         1, 1, 1, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 0, 0, &
-         1, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 0, 0, &
-         1, 1, 1, 0, &
-         0, 0, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 0, 0, &
-         0, 1, 1, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0], &
-         shape(tee))
-
-  ! L BLOCK
-  integer, parameter :: ell(4,4,0:3) = reshape( &
-        [0, 0, 0, 0, &
-         1, 1, 1, 0, &
-         1, 0, 0, 0, &
-         0, 0, 0, 0, &
-
-         1, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 0, 0, 0, &
-         0, 0, 1, 0, &
-         1, 1, 1, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 1, 1, 0, &
-         0, 0, 0, 0], &
-         shape(ell))
-
-  ! J BLOCK
-  integer, parameter :: jay(4,4,0:3) = reshape( &
-        [0, 0, 0, 0, &
-         1, 1, 1, 0, &
-         0, 0, 1, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 0, 0, &
-         0, 1, 0, 0, &
-         1, 1, 0, 0, &
-         0, 0, 0, 0, &
-
-         0, 0, 0, 0, &
-         1, 0, 0, 0, &
-         1, 1, 1, 0, &
-         0, 0, 0, 0, &
-
-         0, 1, 1, 0, &
-         0, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0], &
-         shape(jay))
-
-  ! S BLOCK
-  integer, parameter :: ess(4,4,0:1) = reshape( &
-        [0, 0, 0, 0, &
-         0, 1, 1, 0, &
-         1, 1, 0, 0, &
-         0, 0, 0, 0, &
-
-         1, 0, 0, 0, &
-         1, 1, 0, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0], &
-         shape(ess))
-
-  ! Z BLOCK
-  integer, parameter :: zee(4,4,0:1) = reshape( &
-        [0, 0, 0, 0, &
-         1, 1, 0, 0, &
-         0, 1, 1, 0, &
-         0, 0, 0, 0, &
-
-         0, 0, 1, 0, &
-         0, 1, 1, 0, &
-         0, 1, 0, 0, &
-         0, 0, 0, 0], &
-         shape(zee))
-
-  ! SQUARE BLOCK
-  integer, parameter :: square(4,4) = reshape( &
-        [0, 1, 1, 0, &
-         0, 1, 1, 0, &
-         0, 0, 0, 0, &
-         0, 0, 0, 0], &
-         shape(square))
 
   integer, parameter :: Ny=size(square,1), Nx=size(square,2)
 
