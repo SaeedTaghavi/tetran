@@ -1,6 +1,6 @@
 program tetran
-  use cinter, only:  initscr,getch,noecho,flushinp,mvprintw,addch,printopts, &
-    mvaddch,endwin, clear,timeout,usleep,cbreak, &
+  use cinter, only:  initscr,getch,noecho,flushinp,mvprintw,addch, &
+    mvaddch,clear,timeout,usleep,cbreak, &
     maxH=>LINES, maxW=>COLS
   use blocks
   use keys, only: handle_input
@@ -8,16 +8,7 @@ program tetran
   use, intrinsic:: iso_fortran_env, only: error_unit, input_unit
   implicit none
 
-  logical :: debug=.false.
-  integer, parameter :: Tmax = 10000 ! maximum number of pieces to log
-
   type(c_ptr) :: stdscr
-
-
-  ! Current score
-  integer :: score = 0, Nblock=0 ! first go around draws two blocks
-  character(1) :: blockseq(Tmax) = "" ! record of blocks player experienced
-  ! NOTE: uses eoshift to avoid indexing beyond array, discarding earliest turns
 
   integer :: next_disp_x
   integer, parameter :: next_disp_y = 5
@@ -29,16 +20,11 @@ program tetran
   ! 1e6 microsec: mushy controls. 1e5 microsec a little laggy. 5e4 about right. 1e4 microsec screen flicker.
   integer :: toc, tic,trate  ! elapsed time
 
-  integer :: udbg
-
-  integer :: level=1  ! game level, increases difficulty over time
   integer, parameter :: lines_per_level = 10 ! how many lines to clear to advance to next level
   real, parameter :: difficulty_increase = 1.2 ! factor by which level jumps difficulty
-  integer :: Ncleared = 0 ! total number of lines cleared
-  logical :: newhit = .false., moved=.false., landed=.false., gameover=.false.
-  real :: difficulty_factor=1.
 
-  integer, parameter :: bonus(0:4) = [0,40,100,300,1200]
+  logical :: moved=.false., landed=.false.
+  real :: difficulty_factor=1.
 
 
   call cmd_parse()
@@ -77,8 +63,7 @@ program tetran
   !--------- main loop
   do
 
-    call handle_input(moved,landed,gameover,cur_y,next_type)  ! was a key pressed?
-    if (gameover) call game_over()
+    call handle_input(moved,landed,cur_y,next_type)  ! was a key pressed?
     if (landed) call piece_hit()
     if (moved) call redraw()
     
@@ -183,28 +168,6 @@ contains
   end subroutine cmd_parse
 
 
-  subroutine game_over()
-      call endwin()
-      
-      call printopts()
-
-      print *,''
-      print *, 'Level:', level
-      Print *, 'Score:', score
-      print *, 'Number of Blocks:',Nblock
-      print *, 'Number of Lines Cleared:',Ncleared
-      print *, 'Block Sequence: ',blockseq(:Nblock)
-
-      if (debug) then
-        write(udbg,*) 'Block Sequence: ',blockseq(:Nblock)
-        close(udbg)
-      endif
-      
-
-      stop 'Goodbye from Tetran'
-
-  end subroutine game_over
-
 
   subroutine draw_screen()
     integer :: i, j
@@ -262,78 +225,6 @@ contains
       end do
     end do
   end subroutine draw_piece
-
-
-  subroutine piece_hit()
-  ! Called when a piece has hit another and is solidifying
-    integer :: block(Ny,Nx)
-    integer :: i, j, x, y
-
-    call get_shape(cur_type, cur_rotation, block)
-
-! not concurrent due to impure "game_over"
-    do i = 1, Ny
-      y = i + cur_y - 1
-      do j = 1, Nx
-        x = j + cur_x - 1
-        if (block(i, j) == 1) then
-          if (y <= 1)  call game_over()
-          screen(y, x) = 1
-        end if
-      end do
-    end do
-
-    call handle_clearing_lines()
-    call spawn_block()
-  end subroutine piece_hit
-
-
-  subroutine spawn_block()
-    integer :: ib
-    real :: r
-
-    call random_number(r)
-    cur_x = nint(r*(W-Nx) + Nx/2)
-    cur_y = -1
-    cur_type = next_type
-    cur_rotation = 0
- ! ----- logging ---------
-    if (Nblock>Tmax) then
-      ib = Tmax
-      blockseq = eoshift(blockseq,1)  !OK array-temp
-    else
-      ib = Nblock
-    endif
-
-    blockseq(ib) = cur_type
-  ! ------ end logging
-
-    call generate_next_type(next_type, Nblock)
-  end subroutine spawn_block
-
-
-  subroutine handle_clearing_lines()
-    logical :: lines_to_clear(H)
-    integer :: i, counter
-
-    lines_to_clear = all(screen==1,2) ! mask of lines that need clearing
-    counter = count(lines_to_clear)   ! how many lines are cleared
-    if (counter == 0) return
-
-    Ncleared = Ncleared + counter
-    if (debug) write(udbg,*) lines_to_clear, counter
-
-    score = score + bonus(counter)
-! not concurrent since it could clear lines above shifted by other concurrent iterations
-! i.e. in some cases, it would check an OK line that turns bad after clearing by another elemental iteration.
-! also note non-adjacent lines can be cleared at once.
-    do i = 1, H
-      if (.not.lines_to_clear(i)) cycle
-      newhit = .true.
-      screen(i,:) = 0 ! wipe away cleared lines
-      screen(:i, :) = cshift(screen(:i, :), shift=-1, dim=1)
-      ! Bring everything down
-    end do
-  end subroutine handle_clearing_lines
+  
 
 end program
