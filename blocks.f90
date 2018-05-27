@@ -90,22 +90,19 @@ contains
     character, intent(out) :: next_type
     integer, intent(inout), optional :: Nblock
     real :: r
+    integer :: i
 
     if(present(Nblock)) Nblock = Nblock + 1  ! for game stats
 
     call random_number(r)
 
-    next_type = int2block(floor(r * len(Btypes)))  ! set this line constant to debug shapes
+    i = floor(r * len(Btypes))  ! set this line constant to debug shapes
+    
+    next_type = Btypes(i+1:i+1)
   end subroutine generate_next_type
   
   
-  impure elemental character function int2block(i) result(b)
-    integer, intent(in) :: i
-    b = Btypes(i+1:i+1)
-  end function int2block
-  
-  
-    subroutine move_left()
+  subroutine move_left()
     integer :: x
     x = cur_x - 1
     if (.not. check_collision(x, cur_y, cur_rotation)) cur_x = cur_x - 1
