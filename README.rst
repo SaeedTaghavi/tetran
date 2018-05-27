@@ -111,19 +111,12 @@ Normalized benchmarks
 ~~~~~~~~~~~~~~~~~~~~~
 using ``time ./blockrand 100000000`` *relative normalized* execution times were:
 
-``-O0``::
-
-  GNU   1.00 (fastest normalized)
-  Flang 1.12
-  PGI:  1.32 
-  ifort 4.97
-
 ``-O3``::
 
-  GNU   1.0 (fastest normalized)
-  Flang 1.23
-  PGI   1.16
-  ifort 3.70
+  GNU   1.00 (fastest normalized)
+  Flang 1.90
+  PGI:  1.82 
+  ifort 8.22
   
 Tested with:
 
